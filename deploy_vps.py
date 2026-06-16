@@ -23,10 +23,10 @@ def deploy_to_vps():
             "cat << 'EOF' > ~/my_mosquitto.conf\nlistener 9210 0.0.0.0\nprotocol websockets\nallow_anonymous true\nEOF",
             
             # Run mosquitto in the background using nohup
-            "nohup mosquitto -c ~/my_mosquitto.conf > mosquitto.log 2>&1 &",
+            "nohup mosquitto -c ~/my_mosquitto.conf > mosquitto.log 2>&1 < /dev/null &",
             
             # Run the Python HTTP server on port 8210 from the cloned repository folder to serve dashboard.html
-            "cd tempix && nohup python3 -m http.server 8210 > http_server.log 2>&1 &",
+            "cd tempix && nohup python3 -m http.server 8210 > http_server.log 2>&1 < /dev/null &",
             
             # Print running processes to verify
             "sleep 2 && ps -ef | grep -E 'mosquitto|http.server'"
