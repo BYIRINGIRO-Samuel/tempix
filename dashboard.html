@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium IoT Dashboard</title>
+    <!-- Google Fonts: Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Paho MQTT -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --surface-color: rgba(30, 30, 30, 0.6);
+            --gold-primary: #FFD700;
+            --gold-secondary: #FFA500;
+            --gold-glow: rgba(255, 215, 0, 0.4);
+            --text-main: #ffffff;
+            --text-muted: #aaaaaa;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            overflow-y: auto; /* Allows scrolling */
+            position: relative;
+            padding-bottom: 3rem; /* padding at bottom for scrolling */
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 215, 0, 0.3);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--gold-primary);
+        }
+
+        /* Animated Background Particles / Gradient */
+        .bg-animation {
+            position: fixed; /* Fixed so it stays behind content while scrolling */
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #050505 100%);
+        }
+
+        .glow-orb {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.05) 0%, transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: pulse-orb 8s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse-orb {
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.5; }
+            100% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+        }
+
+        header {
+            width: 100%;
+            padding: 1.5rem; /* Reduced padding from 2.5rem */
+            text-align: center;
+            z-index: 10;
+            animation: slide-down 1s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(-50px);
+            margin-bottom: 1rem;
+        }
+
+        @keyframes slide-down {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-size: 3rem; /* slightly smaller */
+            font-weight: 800;
+            background: linear-gradient(45deg, var(--gold-primary), var(--gold-secondary), #fff);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine 5s linear infinite;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            filter: drop-shadow(0 0 15px var(--gold-glow));
+        }
+
+        @keyframes shine {
+            to { background-position: 200% center; }
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-weight: 300;
+            font-size: 1.1rem;
+            margin-top: 0.2rem;
+            letter-spacing: 1px;
+        }
+
+        main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            z-index: 10;
+            perspective: 1000px;
+        }
+
+        /* Glassmorphism Card - Wider and Fancier */
+        .card {
+            background: var(--surface-color);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            border-radius: 2px; /* Super sharp premium edges */
+            padding: 1.5rem 5rem; /* Reduced vertical padding */
+            width: 90%;
+            max-width: 800px; /* Increased max-width */
+            text-align: center;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.08);
+            animation: float 6s ease-in-out infinite, fade-in-up 1.2s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(50px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Card highlight sweeping effect */
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -150%; width: 50%; height: 100%;
+            background: linear-gradient(to right, transparent, rgba(255,215,0,0.1), transparent);
+            transform: skewX(-20deg);
+            animation: sweep 7s infinite;
+        }
+
+        @keyframes sweep {
+            0% { left: -150%; }
+            50% { left: 200%; }
+            100% { left: 200%; }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); box-shadow: 0 40px 70px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.08); }
+        }
+
+        @keyframes fade-in-up {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card h2 {
+            font-size: 1.8rem;
+            color: var(--text-muted);
+            margin-bottom: 2rem;
+            font-weight: 400;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        .card h2 i {
+            color: var(--gold-primary);
+            text-shadow: 0 0 15px var(--gold-glow);
+        }
+
+        /* SVG Circular Gauge - Larger with more padding */
+        .gauge-container {
+            position: relative;
+            width: 320px; /* Increased from 250px */
+            height: 320px; /* Increased from 250px */
+            margin: 0 auto 2.5rem auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        svg.progress-ring {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: rotate(-90deg);
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 0 12px var(--gold-glow));
+        }
+
+        .progress-ring__circle-bg {
+            fill: transparent;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 10;
+        }
+
+        .progress-ring__circle {
+            fill: transparent;
+            stroke: url(#gold-gradient);
+            stroke-width: 16;
+            stroke-dasharray: 880; /* circumference approx 2 * pi * 140 = 879.6 */
+            stroke-dashoffset: 880;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .temp-display {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            flex-direction: row;
+        }
+
+        #temp-value {
+            font-size: 6.5rem; /* Text size remains relatively the same, but the ring is much bigger now */
+            font-weight: 800;
+            color: var(--text-main);
+            text-shadow: 0 0 25px rgba(255, 255, 255, 0.4);
+            transition: color 0.3s ease, transform 0.3s ease, text-shadow 0.3s ease;
+            line-height: 1;
+        }
+
+        .unit {
+            font-size: 2.5rem;
+            color: var(--gold-primary);
+            font-weight: 600;
+            margin-top: 0.8rem;
+            margin-left: 0.3rem;
+            text-shadow: 0 0 15px var(--gold-glow);
+        }
+
+        /* Status Badge */
+        .status-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            padding: 1rem 2.5rem;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            background: rgba(255, 215, 0, 0.1);
+            color: var(--gold-primary);
+            border: 1px solid rgba(255, 215, 0, 0.4);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
+            transition: all 0.4s ease;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .status-badge.disconnected {
+            background: rgba(255, 76, 76, 0.1);
+            color: #ff4d4d;
+            border-color: rgba(255, 76, 76, 0.4);
+            box-shadow: 0 0 20px rgba(255, 76, 76, 0.15);
+        }
+
+        .live-dot {
+            height: 14px;
+            width: 14px;
+            background-color: var(--gold-primary);
+            border-radius: 50%;
+            margin-right: 15px;
+            box-shadow: 0 0 20px var(--gold-primary);
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        .disconnected .live-dot {
+            background-color: #ff4d4d;
+            box-shadow: 0 0 20px #ff4d4d;
+            animation: none;
+        }
+
+        @keyframes pulse-dot {
+            0% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.8); }
+            70% { transform: scale(1); box-shadow: 0 0 0 15px rgba(255, 215, 0, 0); }
+            100% { transform: scale(0.8); box-shadow: 0 0 0 0 rgba(255, 215, 0, 0); }
+        }
+
+        /* Update Value Animation */
+        .value-updated {
+            transform: scale(1.1);
+            color: var(--gold-primary) !important;
+            text-shadow: 0 0 50px var(--gold-primary) !important;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="bg-animation">
+        <div class="glow-orb"></div>
+    </div>
+
+    <header>
+        <h1>IoT Monitor</h1>
+        <p class="subtitle">Live Sensor Telemetry</p>
+    </header>
+
+    <main>
+        <div class="card">
+            <h2><i class="fa-solid fa-temperature-half"></i> Temperature</h2>
+            
+            <div class="gauge-container">
+                <!-- Larger SVG Box: 320x320. Circle Center: 160, 160. Radius: 140 -->
+                <svg class="progress-ring" viewBox="0 0 320 320">
+                    <defs>
+                        <linearGradient id="gold-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#FFD700" />
+                            <stop offset="100%" stop-color="#FFA500" />
+                        </linearGradient>
+                    </defs>
+                    <circle class="progress-ring__circle-bg" cx="160" cy="160" r="140" />
+                    <circle class="progress-ring__circle" cx="160" cy="160" r="140" id="gauge-circle" />
+                </svg>
+
+                <div class="temp-display">
+                    <span id="temp-value">--</span>
+                    <span class="unit">°C</span>
+                </div>
+            </div>
+
+            <div class="status-container">
+                <div id="connection-status" class="status-badge disconnected">
+                    <span class="live-dot" id="live-dot"></span>
+                    <span id="status-text">Disconnected</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // MQTT Configuration
+        const MQTT_BROKER = "157.173.101.159";
+        const MQTT_PORT = 9210;
+        const MQTT_TOPIC = "student/sensor/temperature";
+        
+        const clientID = "premium_dash_" + Math.random().toString(16).substr(2, 8);
+        let client;
+
+        // UI Elements
+        const tempValueEl = document.getElementById('temp-value');
+        const statusEl = document.getElementById('connection-status');
+        const statusTextEl = document.getElementById('status-text');
+        const gaugeCircle = document.getElementById('gauge-circle');
+
+        // SVG Gauge Math (r=140, circumference = 2 * pi * 140 = 879.6)
+        const circumference = 2 * Math.PI * 140;
+        gaugeCircle.style.strokeDasharray = `${circumference} ${circumference}`;
+        gaugeCircle.style.strokeDashoffset = circumference;
+
+        function setProgress(percent) {
+            // Clamp percentage between 0 and 100
+            const p = Math.max(0, Math.min(100, percent));
+            const offset = circumference - (p / 100) * circumference;
+            gaugeCircle.style.strokeDashoffset = offset;
+        }
+
+        function connectMQTT() {
+            statusTextEl.innerText = "Connecting...";
+            
+            client = new Paho.MQTT.Client(MQTT_BROKER, MQTT_PORT, clientID);
+            
+            client.onConnectionLost = onConnectionLost;
+            client.onMessageArrived = onMessageArrived;
+
+            const options = {
+                onSuccess: onConnect,
+                onFailure: onFailure,
+                useSSL: false, // Turned off SSL for basic VPS connection
+                timeout: 3
+            };
+
+            client.connect(options);
+        }
+
+        function onConnect() {
+            statusTextEl.innerText = "Connected & Live";
+            statusEl.classList.remove('disconnected');
+            client.subscribe(MQTT_TOPIC);
+        }
+
+        function onFailure(error) {
+            statusTextEl.innerText = "Retrying...";
+            setTimeout(connectMQTT, 5000);
+        }
+
+        function onConnectionLost(responseObject) {
+            if (responseObject.errorCode !== 0) {
+                statusTextEl.innerText = "Disconnected";
+                statusEl.classList.add('disconnected');
+                tempValueEl.innerText = "--";
+                setProgress(0);
+                setTimeout(connectMQTT, 5000);
+            }
+        }
+
+        let lastVal = null;
+        function onMessageArrived(message) {
+            if (message.destinationName === MQTT_TOPIC) {
+                const value = parseFloat(message.payloadString);
+                if (!isNaN(value)) {
+                    // Update Text
+                    tempValueEl.innerText = value.toFixed(1);
+
+                    // Update Gauge (Assuming temp range 0 to 50 C for gauge mapping)
+                    // e.g. 25C = 50%
+                    const percent = (value / 50) * 100;
+                    setProgress(percent);
+
+                    // Flash Animation if value changed
+                    if(lastVal !== value) {
+                        tempValueEl.classList.add('value-updated');
+                        setTimeout(() => {
+                            tempValueEl.classList.remove('value-updated');
+                        }, 400);
+                        lastVal = value;
+                    }
+                }
+            }
+        }
+
+        // Initialize connection
+        window.onload = connectMQTT;
+    </script>
+</body>
+</html>
