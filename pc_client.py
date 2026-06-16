@@ -12,7 +12,7 @@ BAUD_RATE = 9600
 
 # MQTT Broker Configuration
 MQTT_BROKER = "157.173.101.159" 
-MQTT_PORT = 8210
+MQTT_PORT = 9210
 MQTT_TOPIC = "student/sensor/temperature"
 
 # ---------------------------------------------------------
@@ -50,10 +50,10 @@ def main():
     
     # 1. Setup MQTT Client (Compatible with paho-mqtt 2.x)
     try:
-        mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "pc_client_publisher")
+        mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, "pc_client_publisher", transport="websockets")
     except AttributeError:
         # Fallback for older paho-mqtt 1.x versions
-        mqtt_client = mqtt.Client("pc_client_publisher")
+        mqtt_client = mqtt.Client("pc_client_publisher", transport="websockets")
     mqtt_client.on_connect = on_connect
     mqtt_client.on_disconnect = on_disconnect
     
